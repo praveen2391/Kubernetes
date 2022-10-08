@@ -1,0 +1,124 @@
+# Multi Stage Pipekine to build and Deploy Docker image
+
+trigger:
+  - main
+  - develop
+  - test
+
+pool:
+  vmImage: ubuntu-latest
+
+parameters:
+  - name: image
+    displayName: Do you want docker Image
+    type: boolean
+    default: false
+    values:
+      - true
+      - false
+
+
+variables:
+  - name: containerRegistry
+    value: ado-to-docker-hub 
+
+# Start of the Maven build stage    
+stages:
+  - stage: Build_Stage
+    displayName: Build Stage for Maven
+    jobs:
+    - job: Build
+      steps:
+        - task: Maven@3
+          displayName: Task to create a Java executable jar by using Maven as package manager tool
+          inputs:
+            mavenPomFile: 'pom.xml'
+            mavenOptions: '-Xmx3072m'
+            javaHomeOption: 'JDKVersion'
+            jdkVersionOption: '1.8'
+            jdkArchitectureOption: 'x64'
+            publishJUnitResults: true
+            testResultsFiles: '**/surefire-reports/TEST-*.xml'
+            goals: 'package'
+        
+        - task: PublishPipelineArtifact@1
+          displayName: Task for publishing the Maven generated artifacts
+          inputs:
+            targetPath: '$(Build.SourcesDirectory)'
+            artifact: 'target'
+
+# Start of the List down Contents Stage
+  - stage: Deploy_Stage
+    displayName: Display the artifacts generated in above stage
+    jobs:
+      - job: Deploy
+        steps:
+          - task: DownloadPipelineArtifact@2
+            displayName: Task for Downloading the artifacts
+            inputs:
+              artifactName: 'target'
+              targetPath: '$(Build.SourcesDirectory)/'
+
+          - task: CmdLine@2
+            displayName: Task for Listing down the contents from the directory
+            inputs:
+              script: |
+                pwd
+                ls -lrth $(Build.SourcesDirectory)
+                ls -lrth ./target
+
+          - task: PublishPipelineArtifact@1
+            displayName: Task for publishing the artifacts 
+            inputs:
+              targetPath: '$(Build.SourcesDirectory)'
+              artifact: 'target'
+
+# Stage for Build docker image of the jar
+  - stage: Docker_Build
+    displayName: Docker build task for creating the Image
+    jobs:
+    - ${{ if contains(parameters.image, 'true') }}:  
+      - job: Build
+        steps:
+          - task: DownloadPipelineArtifact@2
+            displayName: Task for Downloading the artifacts
+            inputs:
+              artifactName: 'target'
+              targetPath: '$(Build.SourcesDirectory)/'
+
+          - task: Bash@3
+            inputs:
+              targetType: 'inline'
+              script: |
+                short_hash=`git rev-parse --short=7 HEAD`
+                echo "##vso[task.setvariable variable=short_hash]$short_hash"
+              workingDirectory: $(Build.SourcesDirectory)
+            displayName: Get short git hash
+
+          - task: Docker@2
+            inputs:
+              containerRegistry: $(containerRegistry)
+              command: 'login'
+          
+          - task: Docker@2
+            inputs:
+              containerRegistry: $(containerRegistry)
+              repository: 'fattehadmin/springboot-application'
+              command: 'buildAndPush'
+              Dockerfile: '**/Dockerfile'
+              tags: 'spring-app-$(Build.BuildNumber)-$(short_hash)-dev' 
+              
+          - task: Docker@2
+            inputs:
+              containerRegistry: $(containerRegistry)
+              command: 'logout'    
+    - ${{ if contains(parameters.image, 'false') }}:  
+      - job: Display
+        steps:
+          - task: Bash@3
+            inputs:
+              targetType: 'inline'
+              script: |
+                echo "seperate independant job "
+              workingDirectory: $(Build.SourcesDirectory)
+            displayName: Get short git hash         

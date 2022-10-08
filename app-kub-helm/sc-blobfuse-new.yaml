@@ -1,0 +1,23 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: blob-fuse
+  namespace: dss-apps
+provisioner: blob.csi.azure.com
+parameters:
+  resourceGroup: azurefilemount
+  storageAccount: azurefilemountinaks
+  containerName: aks-helloworld-three
+  skuName: Standard_RAGRS
+reclaimPolicy: Retain  # If set as "Delete" container would be removed after pvc deletion
+volumeBindingMode: Immediate
+allowVolumeExpansion: true
+mountOptions:
+  - -o allow_other
+  - --file-cache-timeout-in-seconds=120
+  - --use-attr-cache=true
+  - --cancel-list-on-mount-seconds=60  # prevent billing charges on mounting
+  - -o attr_timeout=120
+  - -o entry_timeout=120
+  - -o negative_timeout=120
+  - --cache-size-mb=1000  # Default will be 80% of available memory, eviction will happen beyond that.

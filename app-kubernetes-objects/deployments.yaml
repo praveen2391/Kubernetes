@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: 
+  labels: 
+    app: dss-poc
+  name: dss-poc-deployment
+spec: 
+  replicas: 3
+  selector: 
+    matchLabels: 
+      app: dss-poc
+  template: 
+    metadata: 
+      labels: 
+        app: dss-poc
+    spec: 
+      containers: 
+      - name: dss-poc
+        image: praveenpk123/humana-poc:nginxapp-2
+        ports: 
+        - containerPort: 8080

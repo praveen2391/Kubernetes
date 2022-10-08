@@ -1,0 +1,67 @@
+# ---
+# apiVersion: v1
+# kind: Namespace
+# metadata:
+#   name: dss-apps
+# --- 
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aks-helloworld-three  
+  namespace: dss-apps
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aks-helloworld-three
+  template:
+    metadata:
+      labels:
+        app: aks-helloworld-three
+    spec:
+      containers:
+      - name: aks-helloworld-three
+        image: mcr.microsoft.com/azuredocs/aks-helloworld:v1
+        ports:
+        - containerPort: 80
+        env:
+        - name: TITLE
+          value: "Welcome to app3"
+        - name: REPORT_SRV
+          value: "Hello from the environment"
+        - name: CREATED_BY
+          value: "DSS DevOps Admin"
+        - name: DB_NAME
+          value: "Postgrase & MongoDB"
+        - name: DB_HOST
+          value: "Some DB details"   
+        volumeMounts:
+        - name: mnt
+          mountPath: "/mnt"
+          # readOnly: false  
+      volumes:
+      - name: mnt
+        # secret:
+        #   secretName: dss-azblob-secret
+        #   optional: false
+        persistentVolumeClaim:
+          claimName: pvc-blobfuse-new2
+      # csi:
+      #   driver: blob.csi.azure.com
+      #   readOnly: false  
+        #   volumeAttributes:
+        #     secretName: dss-azfilemount-secret  # required
+        #     shareName: dss-azurefilesh  # required  
+        #     mountOptions: "dir_mode=0777,file_mode=0777,cache=strict,actimeo=30"  # optional 
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aks-helloworld-three  
+  namespace: dss-apps
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+  selector:
+    app: aks-helloworld-three
