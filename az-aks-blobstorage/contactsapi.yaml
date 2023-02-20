@@ -1,0 +1,46 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dss-app
+--- 
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: contactsapi-deployment  
+  namespace: dss-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: contactsapi
+  template:
+    metadata:
+      labels:
+        app: contactsapi
+    spec:
+      containers:
+      - name: aks-blobstorage
+        image: docker.io/kiffy7/contactsapi:v1.0
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: blob
+          mountPath: "/mnt"
+          # readOnly: false  
+      volumes:
+      - name: blob
+        persistentVolumeClaim:
+          claimName: pvc-blob
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aks-blobstorage-contactsapi-svc  
+  namespace: dss-app
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+  selector:
+    app: contactsapi       

@@ -1,0 +1,46 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dss-app
+--- 
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aks-blobstorage-deployment  
+  namespace: dss-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aks-blobstorage
+  template:
+    metadata:
+      labels:
+        app: aks-blobstorage
+    spec:
+      containers:
+      - name: aks-blobstorage
+        image: mcr.microsoft.com/azuredocs/aks-helloworld:v1
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: blob
+          mountPath: "/mnt"
+          # readOnly: false  
+      volumes:
+      - name: blob
+        persistentVolumeClaim:
+          claimName: pvc-blob
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aks-blobstorage-svc  
+  namespace: dss-app
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+  selector:
+    app: aks-blobstorage        
